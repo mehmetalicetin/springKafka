@@ -1,0 +1,18 @@
+docker exec -it  resources-kafka-1-1 kafka-topics.sh --list --bootstrap-server localhost:9093
+
+docker exec -it c05338b3769e       kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+
+docker exec -it  c05338b3769e  kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3  --topic test1_skh
+
+
+docker exec -it c05338b3769e       kafka-topics.sh --bootstrap-server localhost:9092 --list
+
+
+docker exec -it  c05338b3769e   kafka-console-producer.sh --topic test1_skh --bootstrap-server localhost:9092
+
+
+docker exec -it  c05338b3769e  kafka-console-consumer.sh --topic test1_skh --from-beginning --bootstrap-server localhost:9092
+
+
+docker-compose down --remove-orphans
