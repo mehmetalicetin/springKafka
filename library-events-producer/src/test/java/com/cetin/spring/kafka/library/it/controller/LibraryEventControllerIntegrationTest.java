@@ -70,12 +70,12 @@ public class LibraryEventControllerIntegrationTest {
         HttpEntity<LibraryEvent> httpEntity = new HttpEntity<>(libraryEvent, httpHeaders);
         //when
         ResponseEntity<LibraryEvent> libraryEventResponseEntity =
-                testRestTemplate.exchange("/vi/libraryevent", HttpMethod.POST, httpEntity, LibraryEvent.class);
+                testRestTemplate.exchange("/v1/libraryevent", HttpMethod.POST, httpEntity, LibraryEvent.class);
 
         //then
         Assertions.assertEquals(HttpStatus.CREATED, libraryEventResponseEntity.getStatusCode());
 
-        ConsumerRecord<Integer, String> singleRecord = KafkaTestUtils.getSingleRecord(consumer, "library-evets");
+        ConsumerRecord<Integer, String> singleRecord = KafkaTestUtils.getSingleRecord(consumer, "library-events");
 
         String value = singleRecord.value();
 
@@ -84,5 +84,75 @@ public class LibraryEventControllerIntegrationTest {
         Assertions.assertEquals(expected, value);
 
 
+    }
+
+    @Test
+    @Timeout(5)
+    void putLibraryEvent(){
+        //given
+
+        Book book = Book.builder()
+                .bookId(123)
+                .bookAuthor("Karaman")
+                .bookName("Head First Kafka")
+                .build();
+
+        LibraryEvent libraryEvent = LibraryEvent
+                .builder()
+                .libraryEventId(999)
+                .book(book)
+                .build();
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("content-type", MediaType.APPLICATION_JSON.toString());
+        HttpEntity<LibraryEvent> httpEntity = new HttpEntity<>(libraryEvent, httpHeaders);
+        //when
+        ResponseEntity<?> libraryEventResponseEntity =
+                testRestTemplate.exchange("/v1/libraryevent", HttpMethod.PUT, httpEntity, LibraryEvent.class);
+
+        //then
+        Assertions.assertEquals(HttpStatus.OK, libraryEventResponseEntity.getStatusCode());
+
+        ConsumerRecord<Integer, String> consumerRecord = KafkaTestUtils.getSingleRecord(consumer, "library-events");
+
+        String expected = "{\"libraryEventId\":999,\"libraryEventType\":\"UPDATE\",\"book\":{\"bookId\":123,\"bookName\":\"Head First Kafka\",\"bookAuthor\":\"Karaman\"}}";
+
+
+        Assertions.assertEquals(expected, consumerRecord.value());
+    }
+
+    @Test
+    @Timeout(5)
+    void putLibraryEvent_4xx(){
+        //given
+
+        Book book = Book.builder()
+                .bookId(123)
+                .bookAuthor("Karaman")
+                .bookName("Head First Kafka")
+                .build();
+
+        LibraryEvent libraryEvent = LibraryEvent
+                .builder()
+                .libraryEventId(null)
+                .book(book)
+                .build();
+
+        HttpHeaders httpHeaders = new HttpHeaders();
+        httpHeaders.set("content-type", MediaType.APPLICATION_JSON.toString());
+        HttpEntity<LibraryEvent> httpEntity = new HttpEntity<>(libraryEvent, httpHeaders);
+        //when
+        ResponseEntity<?> libraryEventResponseEntity =
+                testRestTemplate.exchange("/v1/libraryevent", HttpMethod.PUT, httpEntity, LibraryEvent.class);
+
+        //then
+        Assertions.assertEquals(HttpStatus.BAD_REQUEST, libraryEventResponseEntity.getStatusCode());
+
+        ConsumerRecord<Integer, String> consumerRecord = KafkaTestUtils.getSingleRecord(consumer, "library-events");
+
+        String expected = "Please pass the libraryEventId";
+
+
+        Assertions.assertEquals(expected, consumerRecord.value());
     }
 }

@@ -2,6 +2,7 @@ package com.cetin.spring.kafka.library.unit.controller;
 
 import com.cetin.spring.kafka.library.domain.Book;
 import com.cetin.spring.kafka.library.domain.LibraryEvent;
+import com.cetin.spring.kafka.library.domain.LibraryEventType;
 import com.cetin.spring.kafka.library.producer.LibraryEventProducer;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,6 +21,7 @@ import static org.mockito.ArgumentMatchers.isA;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,13 +48,14 @@ public class LibraryEventControllerUnitTest {
                 .builder()
                 .libraryEventId(null)
                 .book(book)
+                .libraryEventType(LibraryEventType.NEW)
                 .build();
 
         String value = objectMapper.writeValueAsString(libraryEvent);
 
         when(libraryEventProducer.sendLibraryEvent_Approach2(isA(LibraryEvent.class))).thenReturn(null);
 
-        RequestBuilder requestBuilder = post("/vi/libraryevent")
+        RequestBuilder requestBuilder = post("/v1/libraryevent")
                 .content(value)
                 .contentType(MediaType.APPLICATION_JSON);
 
@@ -73,19 +76,80 @@ public class LibraryEventControllerUnitTest {
                 .builder()
                 .libraryEventId(null)
                 .book(book)
+                .libraryEventType(LibraryEventType.NEW)
                 .build();
 
         String value = objectMapper.writeValueAsString(libraryEvent);
 
         when(libraryEventProducer.sendLibraryEvent_Approach2(isA(LibraryEvent.class))).thenReturn(null);
 
-        RequestBuilder requestBuilder = post("/vi/libraryevent")
+        RequestBuilder requestBuilder = post("/v1/libraryevent")
                 .content(value)
                 .contentType(MediaType.APPLICATION_JSON);
 
         ResultMatcher resultMatcher = status().is4xxClientError();
 
         String errorMessage = "book.bookAuthor - must not be blank, book.bookId - must not be null";
+        mockMvc.perform(requestBuilder)
+                .andExpect(resultMatcher)
+                .andExpect(content().string(errorMessage));
+    }
+
+
+    @Test
+    void updateLibraryEvent() throws Exception {
+        Book book = Book.builder()
+                .bookId(123)
+                .bookAuthor("Ali")
+                .bookName("Head First Kafka")
+                .build();
+
+        LibraryEvent libraryEvent = LibraryEvent
+                .builder()
+                .libraryEventId(999)
+                .book(book)
+                .libraryEventType(LibraryEventType.UPDATE)
+                .build();
+
+        String value = objectMapper.writeValueAsString(libraryEvent);
+
+        when(libraryEventProducer.sendLibraryEvent_Approach2(isA(LibraryEvent.class))).thenReturn(null);
+
+        RequestBuilder requestBuilder = put("/v1/libraryevent")
+                .content(value)
+                .contentType(MediaType.APPLICATION_JSON);
+
+        ResultMatcher resultMatcher = status().isOk();
+        mockMvc.perform(requestBuilder)
+                .andExpect(resultMatcher);
+    }
+
+    @Test
+    void updateLibraryEvent_withNullLibraryEventId() throws Exception {
+        Book book = Book.builder()
+                .bookId(123)
+                .bookAuthor("Karaman")
+                .bookName("Head First Kafka")
+                .build();
+
+        LibraryEvent libraryEvent = LibraryEvent
+                .builder()
+                .libraryEventId(null)
+                .book(book)
+                .libraryEventType(LibraryEventType.UPDATE)
+                .build();
+
+        String value = objectMapper.writeValueAsString(libraryEvent);
+
+        when(libraryEventProducer.sendLibraryEvent_Approach2(isA(LibraryEvent.class))).thenReturn(null);
+
+        RequestBuilder requestBuilder = put("/v1/libraryevent")
+                .content(value)
+                .contentType(MediaType.APPLICATION_JSON);
+
+        ResultMatcher resultMatcher = status().isBadRequest();
+
+        String errorMessage = "Please pass the libraryEventId";
         mockMvc.perform(requestBuilder)
                 .andExpect(resultMatcher)
                 .andExpect(content().string(errorMessage));
