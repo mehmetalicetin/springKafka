@@ -1,18 +1,91 @@
-docker exec -it  resources-kafka-1-1 kafka-topics.sh --list --bootstrap-server localhost:9093
+docker exec -it  resources_kafka_1 kafka-topics.sh --list --bootstrap-server localhost:9093
 
-docker exec -it c05338b3769e       kafka-topics.sh --bootstrap-server localhost:9092 --list
-
-
-docker exec -it  c05338b3769e  kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3  --topic test1_skh
+docker exec -it resources_kafka_1       kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 
-docker exec -it c05338b3769e       kafka-topics.sh --bootstrap-server localhost:9092 --list
+docker exec -it  resources_kafka_1  kafka-topics.sh --create --bootstrap-server localhost:9092 --replication-factor 1 --partitions 3  --topic test1_skh
 
 
-docker exec -it  c05338b3769e   kafka-console-producer.sh --topic test1_skh --bootstrap-server localhost:9092
+docker exec -it resources_kafka_1       kafka-topics.sh --bootstrap-server localhost:9092 --list
 
 
-docker exec -it  c05338b3769e  kafka-console-consumer.sh --topic test1_skh --from-beginning --bootstrap-server localhost:9092
+docker exec -it  resources_kafka_1   kafka-console-producer.sh --topic test1_skh --bootstrap-server localhost:9092
+
+
+docker exec -it  resources_kafka_1  kafka-console-consumer.sh --topic test1_skh --from-beginning --bootstrap-server localhost:9092
 
 
 docker-compose down --remove-orphans
+
+-------------------------------------
+
+> keytool -keystore server.keystore.jks -alias localhost -validity 365 -genkey -keyalg RSA
+
+> openssl req -new -x509 -keyout ca-key -out ca-cert -days 365 -subj "/CN=local-security-CA"
+
+> keytool -keystore server.keystore.jks -alias localhost -certreq -file cert-file
+
+> openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days 365 -CAcreateserial -passin pass:password
+
+> keytool -printcert -v -file cert-signed
+
+> keytool -keystore server.keystore.jks -alias CARoot -import -file ca-cert
+> keytool -keystore server.keystore.jks -alias localhost -import -file cert-signed
+
+> keytool -keystore client.truststore.jks -alias CARoot -import -file ca-cert
+
+ssl.keystore.location=<location>/server.keystore.jks
+ssl.keystore.password=password
+ssl.key.password=password
+ssl.endpoint.identification.algorithm=
+
+
+
+
+
+
+
+
+
+
+
+
+
+I have to add encryption and authentication with SSL in kafka.
+
+This is what I have done:
+
+Generate certificate for each broker kafka:
+
+keytool -keystore server.keystore.jks -alias localhost -validity 365 -genkey
+
+Create CA. The generated CA is a public-private key pair and certificate used to sign other certificates. A CA is responsible for signing certificates.
+
+openssl req -new -x509 -keyout ca-key -out ca-cert -days 365
+
+Sign all brokers certificates with the generated CA Export the certificate from the keystore:
+
+keytool -keystore server.keystore.jks -alias localhost -certreq -file cert-file
+
+Sign it with the CA:
+
+openssl x509 -req -CA ca-cert -CAkey ca-key -in cert-file -out cert-signed -days {validity} -CAcreateserial -passin pass:{ca-password}
+
+Import both the certificate of the CA and the signed certificate into the keystore:
+
+keytool -keystore server.keystore.jks -alias CARoot -import -file ca-cert
+
+keytool -keystore server.keystore.jks -alias localhost -import -file cert-signed
+
+Import CA to client truststore and broker/server truststore:
+
+keytool -keystore server.truststore.jks -alias CARoot -import -file ca-cert keytool -keystore client.truststore.jks -alias CARoot -import -file ca-cert
+
+Add these line in the configuration server.properties: listeners=PLAINTEXT://localhost:9092, SSL://localhost:9192
+ssl.client.auth=required
+ssl.keystore.location=/home/xrobot/kafka_2.12-2.1.0/certificate/server.keystore.jks
+ssl.keystore.password=blablabla
+ssl.key.password=blablabla
+ssl.truststore.location=/home/xrobot/kafka_2.12-2.1.0/certificate/server.truststore.jks
+ssl.truststore.password=blablabla
+security.inter.broker.protocol=SSL
